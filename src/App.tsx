@@ -1,40 +1,13 @@
-import { createContext, useRef, useState } from 'react'
 import './App.css'
-import FirstComponent from './components/FirstComponent';
+import StudentListComponent from './components/StudentListComponent'
 
-interface Product {
-  id: number;
-  name: string;
-}
-
-interface ProductContextType {
-  products: Product[];
-  setProducts: (products: Product[]) => void;
-}
-
-export const ProductContext = createContext<ProductContextType>({products: [], setProducts: () => {}});
 
 function App() {
-  const [products, setProducts] = useState([{id:1, name:'dell'}])
-  const inputElement = useRef<HTMLInputElement>(null);
-
-  const ProductProvider = ProductContext.Provider;
-
-  const add = ()=>{
-    const maxId = products.length>0 ? Math.max(...products.map(x=>x.id)):0;
-    const newId = maxId +1;
-
-    setProducts([...products, { id: newId, name: inputElement.current?.value || 'Unnamed Product' }])
-  }
-
+  
   return (
-    <div>
-      <input type='text' ref={inputElement}/>
-      <button onClick={add}>Add</button>
-      <ProductProvider value={{products, setProducts}}>
-
-      <FirstComponent/>
-      </ProductProvider>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Student CRUD</h1>
+      <StudentListComponent />
     </div>
   )
 }
