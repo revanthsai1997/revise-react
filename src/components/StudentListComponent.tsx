@@ -1,63 +1,98 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Student } from "../types/Student";
 import StudentItemComponent from "./StudentItemComponent";
 import AddOrUpdateStudentComponent from "./AddOrUpdateStudentComponent";
-
-const initialStudents: Student[] = [
-  { id: 1, name: "Bob", age: 16, email: "Bob@react.edu", enrolled: false },
-  { id: 2, name: "Alice", age: 18, email: "Alice@react.edu", enrolled: true },
-];
+import { fetchStudents, saveStudent, deleteStudent } from "../utils/StudentApi";
 
 function StudentListComponent() {
-  const [students, setStudents] = useState<Student[]>(initialStudents);
+  const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const abortController = new AbortController();
 
-  const handleAdd = () => {
-    setSelectedStudent(null); // Clear selected student for adding a new one
-    setIsFormVisible(true);
-  };
-
-  const handleEdit = (student: Student) => {
-    setSelectedStudent(student); // Set the student to be edited
-    setIsFormVisible(true);
-  };
-
-  const handleSave = (student: Student) => {
-    if (student.id === 0) {
-      // Add new student
-      const newStudent = { ...student, id: students.length + 1 };
-      setStudents((prev) => [...prev, newStudent]);
-    } else {
-      // Update existing student
-      setStudents((prev) =>
-        prev.map((s) => (s.id === student.id ? student : s))
-      );
+  // Fetch students from the API
+  const loadStudents = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchStudents(abortController.signal);
+      setStudents(data);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log("Fetch aborted");
+      } else {
+        console.error(error);
+      }
+    } finally {
+      setLoading(false);
     }
-    setIsFormVisible(false);
   };
 
+  // Add or update a student
+  const handleSave = async (student: Student) => {
+    try {
+      await saveStudent(student);
+      loadStudents(); // Refresh the student list
+      setIsFormVisible(false);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // Delete a student
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteStudent(id);
+      loadStudents(); // Refresh the student list
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // Cancel form
   const handleCancel = () => {
     setIsFormVisible(false);
   };
 
-  const handleDelete = (id: number) => {
-    setStudents((prev) => prev.filter((student) => student.id !== id));
+  // Add a new student
+  const handleAdd = () => {
+    setSelectedStudent(null);
+    setIsFormVisible(true);
   };
+
+  // Edit an existing student
+  const handleEdit = (student: Student) => {
+    setSelectedStudent(student);
+    setIsFormVisible(true);
+  };
+
+  // Fetch students on component mount
+  useEffect(() => {
+    loadStudents();
+
+    // Cleanup: Abort fetch on component unmount
+    return () => {
+      abortController.abort();
+    };
+  }, []);
 
   return (
     <div className="overflow-x-auto">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold text-gray-800">Student List</h2>
-        {!isFormVisible && (<button
-          onClick={handleAdd}
-          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-        >
-          Add Student
-        </button>)}
+        {!isFormVisible && (
+          <button
+            onClick={handleAdd}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+          >
+            Add Student
+          </button>
+        )}
       </div>
 
-      {isFormVisible ? (
+      {loading ? (
+        <p className="text-center text-gray-500">Loading...</p>
+      ) : isFormVisible ? (
         <AddOrUpdateStudentComponent
           student={selectedStudent || undefined}
           onSave={handleSave}
@@ -67,21 +102,11 @@ function StudentListComponent() {
         <table className="table-auto w-full border-collapse border border-gray-300">
           <thead>
             <tr className="bg-gray-100">
-              <th className="border border-gray-300 px-4 py-2 text-left">
-                Name
-              </th>
-              <th className="border border-gray-300 px-4 py-2 text-left">
-                Age
-              </th>
-              <th className="border border-gray-300 px-4 py-2 text-left">
-                Email
-              </th>
-              <th className="border border-gray-300 px-4 py-2 text-left">
-                Status
-              </th>
-              <th className="border border-gray-300 px-4 py-2 text-left">
-                Actions
-              </th>
+              <th className="border border-gray-300 px-4 py-2 text-left">Name</th>
+              <th className="border border-gray-300 px-4 py-2 text-left">Age</th>
+              <th className="border border-gray-300 px-4 py-2 text-left">Email</th>
+              <th className="border border-gray-300 px-4 py-2 text-left">Status</th>
+              <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
